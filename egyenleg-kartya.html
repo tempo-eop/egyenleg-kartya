@@ -1,0 +1,289 @@
+<link rel="import" href="../polymer/polymer.html">
+<link rel="import" href="../paper-styles/typography.html">
+<link rel="import" href="../iron-felx-layout/iron-flex-layout-classes.html">
+<link rel="import" href="../paper-material/paper-material.html">
+<script src="../chart.js/dist/Chart.min.js"></script>
+<!--
+`egyenleg-kartya`
+Based on the different ways to fund payments received, time deposits and bonds tax relief and balance reports.
+@demo demo/index.html
+-->
+<dom-module id="egyenleg-kartya">
+  <template>
+    <style is="custom-style" include="iron-flex"></style>
+    <style include="shared-styles">
+      :host {
+        display: block;
+      }
+      paper-material.egyenlegkartya
+      {
+        @apply(--layout-vertical);
+        margin:4px;
+        padding: 15px;
+        padding-left: 30px;
+        padding-right: 30px;
+        background: white;
+      }
+    </style>
+    <paper-material class="egyenlegkartya" elevation="1">
+      <p class="paper-font-title">Az Ön pénztári egyenlege</p>
+      <div class="layout horizontal wrap paper-font-body2" style="width: 100%; border: 0px;">
+        <div class="flex">
+          <div style="min-width: 200px;">
+            A jelenlegi felhasználható egyenlege: <b>{{epegyenleg_kiiras}}&nbsp;Ft</b><br>
+            A jelenlegi lekötött egyenlege: <b>{{lekotes_ossz_kiiras}}&nbsp;Ft</b><br>
+            <!-- Ebből önsegélyező-pénztári szolgáltatásokra is felhasználható: <b>{{onsegegyenleg_kiiras}} Ft</b><br> -->
+            <hr>
+            Az adókedvezményre jogosító befizetései: <b>{{adovissza_befiz_kiiras}}&nbsp;Ft</b><br>
+            Az adókedvezményre jogosító tárgyévi lekötései:* <b>{{lekotes_idei_kiiras}}&nbsp;Ft</b><br>
+            A maximális adókedvezmény igénybevételéhez egyénileg befizetendő összeg: <b>{{max_befizetes_hatravan}}&nbsp;Ft</b><br>
+            <hr>
+            A személyi jövedelemadó bevallásakor igénybevehető adókedvezmény összege: <b>{{adovissza_ossz_kiiras}}&nbsp;Ft</b><br>
+            A még tárgyévben elérhető adókedvezmény összege: <b>{{adovissza_megszer_ossz_kiiras}}&nbsp;Ft</b><br>
+            <hr>
+            Az tárgyévet megelőző évben elért adókedvezmény összege: <b>{{elozoEvesAdokedvezmeny}}&nbsp;Ft</b><br>
+            <p style="font-size: xx-small; margin-top: 2px; margin-bottom: 2px;">* Az egyéni egészségszámlán minimum 2 évre lekötött összegek után a lekötés évében 10% az adóból visszaigényelhető.</p>
+            <hr>
+          </div>
+        </div>
+        <div class="flex" style="text-align: center;">
+          <canvas id="befizChart" width="100%" height="100%" style="display: inline; min-width: 150px; min-height: 150px; max-height: 275px; max-width: 275px;";></canvas>
+        </div>
+      </div>
+    </paper-material>
+  </template>
+  <script>
+  Number.prototype.formatMoney = function(c, d, t){
+  var n = this,
+      c = isNaN(c = Math.abs(c)) ? 2 : c,
+      d = d == undefined ? "," : d,
+      t = t == undefined ? "." : t,
+      s = n < 0 ? "-" : "",
+      i = String(parseInt(n = Math.abs(Number(n) || 0).toFixed(c))),
+      j = (j = i.length) > 3 ? j % 3 : 0;
+     return s + (j ? i.substr(0, j) + t : "") + i.substr(j).replace(/(\d{3})(?=\d)/g, "$1" + t) + (c ? d + Math.abs(n - i).toFixed(c).slice(2) : "");
+   };
+
+  function isNumeric(n) {
+    return !isNaN(parseFloat(n)) && isFinite(n);
+  }
+
+  Polymer({
+  	is: 'egyenleg-kartya',
+
+  	properties: {
+      epegyenleg: {
+        type: String,
+        notify: true,
+        value: "0",
+        reflectToAttribute: true
+      },
+      onsegegyenleg: {
+        type: String,
+        notify: true,
+        value: "0",
+        reflectToAttribute: true
+      },
+      tamogatoi_befizetes: {
+        type: String,
+        notify: true,
+        value: "0",
+        reflectToAttribute: true
+      },
+      munkaltatoi_befizetes: {
+        type: String,
+        notify: true,
+        value: "0",
+        reflectToAttribute: true
+      },
+      egyeni_befizetes: {
+        type: String,
+        notify: true,
+        value: "0",
+        reflectToAttribute: true
+      },
+      epegyenleg_kiiras: {
+        type: String,
+        notify: true,
+        value: "Nincs adat",
+        reflectToAttribute: true
+      },
+      onsegegyenleg_kiiras: {
+        type: String,
+        notify: true,
+        value: "Nincs adat",
+        reflectToAttribute: true
+      },
+      adovissza_befiz_kiiras: {
+        type: String,
+        notify: true,
+        value: "Nincs adat",
+        reflectToAttribute: true
+      },
+      adovissza_ossz: {
+        type: String,
+        notify: true,
+        value: "Nincs adat",
+        reflectToAttribute: true
+      },
+      adovissza_ossz_kiiras: {
+        type: String,
+        notify: true,
+        value: "Nincs adat",
+        reflectToAttribute: true
+      },
+      adovissza_megszer_ossz_kiiras: {
+        type: String,
+        notify: true,
+        value: "Nincs adat",
+        reflectToAttribute: true
+      },
+      max_befizetes_hatravan: {
+        type: String,
+        notify: true,
+        value: "Nincs adat",
+        reflectToAttribute: true
+      },
+      lekotes_ossz: {
+        type: String,
+        notify: true,
+        value: "",
+        reflectToAttribute: true
+      },
+      lekotes_ossz_kiiras: {
+        type: String,
+        notify: true,
+        value: "Nincs adat",
+        reflectToAttribute: true
+      },
+      lekotes_idei: {
+        type: String,
+        notify: true,
+        value: "",
+        reflectToAttribute: true
+      },
+      lekotes_idei_kiiras: {
+        type: String,
+        notify: true,
+        value: "Nincs adat",
+        reflectToAttribute: true
+      },
+      elozoEvesAdokedvezmeny: {
+        type: String,
+        notify: true,
+        value: "",
+        reflectToAttribute: true
+      }
+  	},
+
+    epegyenlegHandler: function(epegyenleg)	{
+      this.adokedv_szamolas();
+    },
+
+    onsegegyenlegHandler: function(onsegegyenleg)	{
+      this.adokedv_szamolas();
+    },
+
+    adovissza_befizHandler: function(adovissza_befiz)	{
+      this.adokedv_szamolas();
+    },
+
+    renderChart: function() {
+      var g1 = (Math.min(this.adovissza_ossz,150000));
+      var g2 = (Math.max((150000-this.adovissza_ossz),0));
+      var ctx = document.getElementById("befizChart");
+
+      var befizChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: ["Jelenlegi adóvisszatérítés", "Elérhető adóvisszatérítés"],
+          datasets: [{
+            label: ' Forint',
+            data: [g1, g2],
+            backgroundColor: [
+              'rgba(75, 192, 192, 0.2)',  //Green
+              'rgba(255, 99, 132, 0.2)',  //Red
+            ],
+            borderColor: [
+              'rgba(75, 192, 192, 1)',    //Green
+              'rgba(255,99,132,1)',       //Red
+            ],
+            borderWidth: 1
+          }]
+        },
+        options: {
+          title: {
+            display: true,
+            text: 'Elérhető adókedvezmény'
+          },
+          tooltips: {
+            bodyFontSize: 9,
+          }
+        }
+      });
+    },
+
+    listeners: {
+      'epegyenleg-changed': 'adokedv_szamolas',
+      'onsegegyenleg-changed': 'adokedv_szamolas',
+      'tamogatoi_befizetes-changed': 'adokedv_szamolas',
+      'munkaltatoi_befizetes-changed': 'adokedv_szamolas',
+      'egyeni_befizetes-changed': 'adokedv_szamolas',
+      'lekotes_ossz-changed': 'adokedv_szamolas',
+      'lekotes_idei-changed': 'adokedv_szamolas',
+    },
+
+    adokedv_szamolas: function()
+    {
+      //Első lépés:
+      //Ha valami Null értékkel menne át, azt beírjuk nullára...
+      //Egyenlegek
+      if (!(isNumeric(this.epegyenleg)))             {this.epegyenleg = '0';           	}
+      if (!(isNumeric(this.onsegegyenleg)))          {this.onsegegyenleg = '0';        	}
+      //Befizetések
+      if (!(isNumeric(this.tamogatoi_befizetes)))    {this.tamogatoi_befizetes = '0';  	}
+      if (!(isNumeric(this.munkaltatoi_befizetes)))  {this.munkaltatoi_befizetes = '0';	}
+      if (!(isNumeric(this.egyeni_befizetes)))       {this.egyeni_befizetes = '0';     	}
+      //Lekötések
+      if (!(isNumeric(this.lekotes_ossz)))        	 {this.lekotes_ossz = '0';     		  }
+      if (!(isNumeric(this.lekotes_idei)))        	 {this.lekotes_idei = '0';     		  }
+
+      //Adóvisszatérítésre jogosult befizetés összege
+      var adovissza_befiz;
+      adovissza_befiz = (Math.min((parseFloat(this.tamogatoi_befizetes)+parseFloat(this.egyeni_befizetes)), 750000));
+
+      //Normál pénztári egyenleg
+      this.epegyenleg_kiiras = (parseFloat(this.epegyenleg)).formatMoney(0);
+      //Lekötések
+      this.lekotes_ossz_kiiras = (parseFloat(this.lekotes_ossz)).formatMoney(0);
+      this.lekotes_idei_kiiras = (parseFloat(this.lekotes_idei)).formatMoney(0);
+
+      //Önsegélyező pénztári egyenleg
+      //this.onsegegyenleg_kiiras = (this.onsegegyenleg).formatMoney(0);
+
+      //Befizetett összeg, ami után adóvisszatérítés jár
+      this.adovissza_befiz_kiiras = (parseFloat(this.tamogatoi_befizetes)+parseFloat(this.egyeni_befizetes)).formatMoney(0);
+
+      //Kap(ott) adóvisszatérítés összege
+      var teljes_adovisszateretis = Math.round(parseFloat((adovissza_befiz / 5) + (this.lekotes_idei / 10)));
+      this.adovissza_ossz_kiiras = parseFloat(teljes_adovisszateretis).formatMoney(0);
+      //Grafikon miatt visszaírni az objektumra
+      this.adovissza_ossz = teljes_adovisszateretis;
+      this.adovissza_megszer_ossz_kiiras = (Math.max((150000-parseFloat(this.adovissza_ossz)),0)).formatMoney(0);
+
+      //Még befizetendő összeg a maximális kedvezményhez
+      this.max_befizetes_hatravan = (Math.max(0,(750000 - adovissza_befiz - (this.lekotes_idei / 2)  ))).formatMoney(0);
+    },
+
+    ready: function()
+    {
+      this.adokedv_szamolas();
+    },
+
+    attached: function()
+    {
+      this.renderChart();
+    }
+  });
+  </script>
+</dom-module>
