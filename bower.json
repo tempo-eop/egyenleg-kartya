@@ -13,5 +13,21 @@
     "iron-demo-helpers": "PolymerElements/iron-demo-helpers#^1.0.0",
     "web-component-tester": "^4.0.0",
     "webcomponentsjs": "webcomponents/webcomponentsjs#^0.7.0"
-  }
+  },
+  "authors": [
+    "Tempo Egészségpénztár - OptiSoft Zrt <optitempo@gmail.com>"
+  ],
+  "keywords": [
+    "egeszsegpenztar",
+    "tempo"
+  ],
+  "license": "BSD",
+  "homepage": "www.egeszsegpenztar.hu",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ]
 }
