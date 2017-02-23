@@ -3,7 +3,7 @@
   "description": "Based on the different ways to fund payments received, time deposits and bonds tax relief and balance reports.",
   "main": "egyenleg-kartya.html",
   "dependencies": {
-    "polymer": "Polymer/polymer#^1.4.0",
+    "polymer": "Polymer/polymer#^1.6.0",
     "chart.js": "^2.5.0",
     "paper-material": "PolymerElements/paper-material#^1.0.6",
     "iron-flex-layout": "PolymerElements/iron-flex-layout#^1.3.2"
